@@ -15,6 +15,13 @@ type scrollDemo struct {
 	backgroundXView int
 }
 
+type Shot struct {
+	pict   *ebiten.Image
+	xShot  int
+	yShot  int
+	deltaX int
+}
+
 func PlayerInput(demo *scrollDemo) {
 	if ebiten.IsKeyPressed(ebiten.KeyArrowUp) && demo.yloc > 0 {
 		demo.yloc -= 4
@@ -22,6 +29,18 @@ func PlayerInput(demo *scrollDemo) {
 	//window height is 1000 pixels and dragon is 100 pixels
 	if ebiten.IsKeyPressed(ebiten.KeyDown) && demo.yloc < 900 {
 		demo.yloc += 4
+	}
+
+	//projectile
+
+}
+
+func NewProjectile(picture *ebiten.Image, demo *scrollDemo) Shot {
+	return Shot{
+		pict:   picture,
+		xShot:  int(demo.backgroundXView),
+		yShot:  int(demo.yloc + 20),
+		deltaX: -8,
 	}
 }
 
