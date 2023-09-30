@@ -9,20 +9,37 @@ import (
 
 type scrollDemo struct {
 	player          *ebiten.Image
+	xloc            int
+	yloc            int
 	background      *ebiten.Image
 	backgroundXView int
 }
 
+func PlayerInput(demo *scrollDemo) {
+	if ebiten.IsKeyPressed(ebiten.KeyArrowUp) && demo.yloc > 0 {
+		demo.yloc -= 4
+	}
+	//window height is 1000 pixels and dragon is 100 pixels
+	if ebiten.IsKeyPressed(ebiten.KeyDown) && demo.yloc < 900 {
+		demo.yloc += 4
+	}
+}
+
 func (demo *scrollDemo) Update() error {
+	//background scroll
 	backgroundWidth := demo.background.Bounds().Dx()
 	maxX := backgroundWidth * 2
 	demo.backgroundXView -= 4
 	demo.backgroundXView %= maxX
+
+	//player input
+	PlayerInput(demo)
 	return nil
 }
 
 func (demo *scrollDemo) Draw(screen *ebiten.Image) {
 	drawOps := ebiten.DrawImageOptions{}
+	//draw background
 	const repeat = 5
 	backgroundWidth := demo.background.Bounds().Dx()
 	for count := 0; count < repeat; count += 1 {
@@ -32,6 +49,10 @@ func (demo *scrollDemo) Draw(screen *ebiten.Image) {
 		drawOps.GeoM.Translate(float64(demo.backgroundXView), 0)
 		screen.DrawImage(demo.background, &drawOps)
 	}
+	//draw player
+	drawOps.GeoM.Reset()
+	drawOps.GeoM.Translate(float64(demo.xloc), float64(demo.yloc))
+	screen.DrawImage(demo.player, &drawOps)
 }
 
 func (s scrollDemo) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
@@ -46,10 +67,14 @@ func main() {
 	if err != nil {
 		fmt.Println("Unable to load background image:", err)
 	}
-
+	playerPict, _, err := ebitenutil.NewImageFromFile("dragon.png")
+	if err != nil {
+		fmt.Println("Unable to load player image:", err)
+	}
 	demo := scrollDemo{
-		player:     nil,
+		player:     playerPict,
 		background: backgroundPict,
+		xloc:       0,
 	}
 	err = ebiten.RunGame(&demo)
 	if err != nil {
