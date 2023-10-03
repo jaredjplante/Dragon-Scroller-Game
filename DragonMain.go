@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/audio"
+	_ "github.com/hajimehoshi/ebiten/v2/audio/wav"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	_ "image/png"
@@ -16,6 +18,8 @@ type scrollDemo struct {
 	backgroundXView int
 	eggPict         *ebiten.Image
 	eggs            []Shot
+	popSound        sound
+	shatterSound    sound
 }
 
 type Shot struct {
@@ -25,12 +29,25 @@ type Shot struct {
 	deltaX int
 }
 
+type sound struct {
+	audioContext *audio.Context
+	soundPlayer  *audio.Player
+	counter      int
+}
+
+const (
+	WINDOW_WIDTH      = 1000
+	WINDOW_HEIGHT     = 1000
+	DRAGON_WIDTH      = 100
+	SOUND_SAMPLE_RATE = 48000
+)
+
 func PlayerInput(demo *scrollDemo) {
 	if ebiten.IsKeyPressed(ebiten.KeyArrowUp) && demo.yloc > 0 {
 		demo.yloc -= 4
 	}
 	//window height is 1000 pixels and dragon is 100 pixels
-	if ebiten.IsKeyPressed(ebiten.KeyDown) && demo.yloc < 900 {
+	if ebiten.IsKeyPressed(ebiten.KeyDown) && demo.yloc < WINDOW_WIDTH-DRAGON_WIDTH {
 		demo.yloc += 4
 	}
 
@@ -45,7 +62,7 @@ func PlayerInput(demo *scrollDemo) {
 func NewProjectile(picture *ebiten.Image, demo *scrollDemo) Shot {
 	return Shot{
 		pict:   picture,
-		xShot:  int(demo.xloc + 100),
+		xShot:  int(demo.xloc + DRAGON_WIDTH),
 		yShot:  int(demo.yloc),
 		deltaX: 8,
 	}
@@ -54,7 +71,11 @@ func NewProjectile(picture *ebiten.Image, demo *scrollDemo) Shot {
 func updateShots(demo *scrollDemo) {
 	for i := 0; i < len(demo.eggs); i++ {
 		demo.eggs[i].xShot += demo.eggs[i].deltaX
-		//remove shots off-screen here
+		//shift elements to remove projectile off-screen
+		if demo.eggs[i].xShot > WINDOW_WIDTH {
+			demo.eggs = append(demo.eggs[:i], demo.eggs[i+1:]...)
+			i--
+		}
 	}
 }
 
@@ -104,7 +125,7 @@ func (s scrollDemo) Layout(outsideWidth, outsideHeight int) (screenWidth, screen
 }
 
 func main() {
-	ebiten.SetWindowSize(1000, 1000)
+	ebiten.SetWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT)
 	ebiten.SetWindowTitle("Scroller Example")
 	//New image from file returns image as image.Image (_) and ebiten.Image
 	//background image
