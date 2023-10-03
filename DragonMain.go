@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
+	"github.com/hajimehoshi/ebiten/v2/audio/wav"
 	_ "github.com/hajimehoshi/ebiten/v2/audio/wav"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	_ "image/png"
+	"os"
 )
 
 type scrollDemo struct {
@@ -32,7 +34,6 @@ type Shot struct {
 type sound struct {
 	audioContext *audio.Context
 	soundPlayer  *audio.Player
-	counter      int
 }
 
 const (
@@ -56,6 +57,9 @@ func PlayerInput(demo *scrollDemo) {
 		newEgg := NewProjectile(demo.eggPict, demo)
 		demo.eggs = append(demo.eggs, newEgg)
 		updateShots(demo)
+		//play egg sound
+		demo.popSound.soundPlayer.Rewind()
+		demo.popSound.soundPlayer.Play()
 	}
 }
 
@@ -143,14 +147,45 @@ func main() {
 	if err != nil {
 		fmt.Println("Unable to load egg projectile image:", err)
 	}
+
+	//handle sound
+	soundContext := audio.NewContext(SOUND_SAMPLE_RATE)
+	popSound := sound{
+		audioContext: soundContext,
+		soundPlayer:  LoadWav("pop.wav", soundContext),
+	}
+	shatterSound := sound{
+		audioContext: soundContext,
+		soundPlayer:  LoadWav("shatter.wav", soundContext),
+	}
+
+	//setup game and run
 	demo := scrollDemo{
-		player:     playerPict,
-		background: backgroundPict,
-		eggPict:    eggPict,
-		xloc:       0,
+		player:       playerPict,
+		background:   backgroundPict,
+		eggPict:      eggPict,
+		popSound:     popSound,
+		shatterSound: shatterSound,
+		xloc:         0,
 	}
 	err = ebiten.RunGame(&demo)
 	if err != nil {
 		fmt.Println("Failed to run game", err)
 	}
+}
+
+func LoadWav(name string, context *audio.Context) *audio.Player {
+	File, err := os.Open(name)
+	if err != nil {
+		fmt.Println("Error Loading sound: ", err)
+	}
+	Sound, err := wav.DecodeWithoutResampling(File)
+	if err != nil {
+		fmt.Println("Error interpreting sound file: ", err)
+	}
+	Player, err := context.NewPlayer(Sound)
+	if err != nil {
+		fmt.Println("Couldn't create sound player: ", err)
+	}
+	return Player
 }
