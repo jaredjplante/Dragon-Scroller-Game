@@ -9,6 +9,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	_ "image/png"
+	"math/rand"
 	"os"
 )
 
@@ -20,14 +21,26 @@ type scrollDemo struct {
 	backgroundXView int
 	eggPict         *ebiten.Image
 	eggs            []Shot
+	enemyPict       *ebiten.Image
+	enemies         []Enemy
 	popSound        sound
 	shatterSound    sound
+	interval        int
+	spawnrate       int
+	score           int
 }
 
 type Shot struct {
 	pict   *ebiten.Image
 	xShot  int
 	yShot  int
+	deltaX int
+}
+
+type Enemy struct {
+	pict   *ebiten.Image
+	xEnemy int
+	yEnemy int
 	deltaX int
 }
 
@@ -40,6 +53,8 @@ const (
 	WINDOW_WIDTH      = 1000
 	WINDOW_HEIGHT     = 1000
 	DRAGON_WIDTH      = 100
+	ENEMY_WIDTH       = 100
+	ENEMY_HEIGHT      = 100
 	SOUND_SAMPLE_RATE = 48000
 )
 
@@ -72,6 +87,16 @@ func NewProjectile(picture *ebiten.Image, demo *scrollDemo) Shot {
 	}
 }
 
+func NewEnemy(picture *ebiten.Image, demo *scrollDemo) Enemy {
+	return Enemy{
+		pict:   picture,
+		xEnemy: int(WINDOW_WIDTH + ENEMY_WIDTH),
+		//FIX so bugs dont spawn under window
+		yEnemy: rand.Intn(WINDOW_HEIGHT),
+		deltaX: 1,
+	}
+}
+
 func updateShots(demo *scrollDemo) {
 	for i := 0; i < len(demo.eggs); i++ {
 		demo.eggs[i].xShot += demo.eggs[i].deltaX
@@ -81,6 +106,24 @@ func updateShots(demo *scrollDemo) {
 			i--
 		}
 	}
+}
+
+func updateEnemies(demo *scrollDemo) {
+	for i := 0; i < len(demo.enemies); i++ {
+		demo.enemies[i].xEnemy -= demo.enemies[i].deltaX
+		//shift elements to remove projectiles after they leave the screen entirely
+		if demo.enemies[i].xEnemy < -ENEMY_WIDTH {
+			demo.enemies = append(demo.enemies[:i], demo.enemies[i+1:]...)
+			i--
+			demo.score = demo.score - 1
+		}
+	}
+}
+
+// create a random wait time between enemies
+func generate_wait() int {
+	interval := rand.Intn(400-100) + 100
+	return interval
 }
 
 func (demo *scrollDemo) Update() error {
@@ -95,6 +138,16 @@ func (demo *scrollDemo) Update() error {
 
 	//update projectiles
 	updateShots(demo)
+
+	//handle enemies
+	if demo.interval <= demo.spawnrate {
+		newBug := NewEnemy(demo.enemyPict, demo)
+		demo.enemies = append(demo.enemies, newBug)
+		demo.interval = generate_wait()
+		demo.spawnrate = 0
+	}
+	updateEnemies(demo)
+	demo.spawnrate++
 	return nil
 }
 
@@ -122,6 +175,13 @@ func (demo *scrollDemo) Draw(screen *ebiten.Image) {
 		drawOps.GeoM.Translate(float64(shot.xShot), float64(shot.yShot))
 		screen.DrawImage(shot.pict, &drawOps)
 	}
+
+	//draw enemies
+	for _, enemy := range demo.enemies {
+		drawOps.GeoM.Reset()
+		drawOps.GeoM.Translate(float64(enemy.xEnemy), float64(enemy.yEnemy))
+		screen.DrawImage(enemy.pict, &drawOps)
+	}
 }
 
 func (s scrollDemo) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
@@ -147,6 +207,10 @@ func main() {
 	if err != nil {
 		fmt.Println("Unable to load egg projectile image:", err)
 	}
+	enemyPict, _, err := ebitenutil.NewImageFromFile("Enemy.png")
+	if err != nil {
+		fmt.Println("Unable to load enemy image:", err)
+	}
 
 	//handle sound
 	soundContext := audio.NewContext(SOUND_SAMPLE_RATE)
@@ -164,9 +228,13 @@ func main() {
 		player:       playerPict,
 		background:   backgroundPict,
 		eggPict:      eggPict,
+		enemyPict:    enemyPict,
 		popSound:     popSound,
 		shatterSound: shatterSound,
 		xloc:         0,
+		interval:     generate_wait(),
+		spawnrate:    0,
+		score:        0,
 	}
 	err = ebiten.RunGame(&demo)
 	if err != nil {
