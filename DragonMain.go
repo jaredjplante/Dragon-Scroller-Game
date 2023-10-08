@@ -91,9 +91,8 @@ func NewEnemy(picture *ebiten.Image, demo *scrollDemo) Enemy {
 	return Enemy{
 		pict:   picture,
 		xEnemy: int(WINDOW_WIDTH + ENEMY_WIDTH),
-		//FIX so bugs dont spawn under window
-		yEnemy: rand.Intn(WINDOW_HEIGHT),
-		deltaX: 1,
+		yEnemy: rand.Intn(WINDOW_HEIGHT - ENEMY_HEIGHT),
+		deltaX: 8,
 	}
 }
 
