@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/co0p/tankism/lib/collision"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
 	"github.com/hajimehoshi/ebiten/v2/audio/wav"
@@ -97,10 +98,21 @@ func NewEnemy(picture *ebiten.Image, demo *scrollDemo) Enemy {
 }
 
 func updateShots(demo *scrollDemo) {
+	//collided egg will become true if the egg collided with an enemy
+	collided_egg := false
+
 	for i := 0; i < len(demo.eggs); i++ {
 		demo.eggs[i].xShot += demo.eggs[i].deltaX
+		for j := 0; j < len(demo.enemies); j++ {
+			collision_bool := checkCollisions(demo.enemies[j], demo.eggs[i], demo)
+			if collision_bool {
+				collided_egg = true
+				demo.enemies = append(demo.enemies[:j], demo.enemies[j+1:]...)
+				j--
+			}
+		}
 		//shift elements to remove projectile off-screen
-		if demo.eggs[i].xShot > WINDOW_WIDTH {
+		if demo.eggs[i].xShot > WINDOW_WIDTH || collided_egg {
 			demo.eggs = append(demo.eggs[:i], demo.eggs[i+1:]...)
 			i--
 		}
@@ -110,13 +122,35 @@ func updateShots(demo *scrollDemo) {
 func updateEnemies(demo *scrollDemo) {
 	for i := 0; i < len(demo.enemies); i++ {
 		demo.enemies[i].xEnemy -= demo.enemies[i].deltaX
-		//shift elements to remove projectiles after they leave the screen entirely
+		//shift elements to remove enemies after they leave the screen entirely
 		if demo.enemies[i].xEnemy < -ENEMY_WIDTH {
 			demo.enemies = append(demo.enemies[:i], demo.enemies[i+1:]...)
 			i--
 			demo.score = demo.score - 1
 		}
 	}
+}
+
+func checkCollisions(bug Enemy, shot Shot, demo *scrollDemo) bool {
+	shotBounds := collision.BoundingBox{
+		X:      float64(shot.xShot),
+		Y:      float64(shot.yShot),
+		Width:  float64(shot.pict.Bounds().Dx()),
+		Height: float64(shot.pict.Bounds().Dy()),
+	}
+	bugBounds := collision.BoundingBox{
+		X:      float64(bug.xEnemy),
+		Y:      float64(bug.yEnemy),
+		Width:  float64(bug.pict.Bounds().Dx()),
+		Height: float64(bug.pict.Bounds().Dy()),
+	}
+	if collision.AABBCollision(shotBounds, bugBounds) {
+		demo.score += 2
+		demo.shatterSound.soundPlayer.Rewind()
+		demo.shatterSound.soundPlayer.Play()
+		return true
+	}
+	return false
 }
 
 // create a random wait time between enemies
@@ -147,6 +181,7 @@ func (demo *scrollDemo) Update() error {
 	}
 	updateEnemies(demo)
 	demo.spawnrate++
+
 	return nil
 }
 
