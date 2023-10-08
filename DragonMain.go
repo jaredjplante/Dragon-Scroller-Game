@@ -9,6 +9,9 @@ import (
 	_ "github.com/hajimehoshi/ebiten/v2/audio/wav"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/text"
+	"golang.org/x/image/colornames"
+	"golang.org/x/image/font/basicfont"
 	_ "image/png"
 	"math/rand"
 	"os"
@@ -93,7 +96,7 @@ func NewEnemy(picture *ebiten.Image, demo *scrollDemo) Enemy {
 		pict:   picture,
 		xEnemy: int(WINDOW_WIDTH + ENEMY_WIDTH),
 		yEnemy: rand.Intn(WINDOW_HEIGHT - ENEMY_HEIGHT),
-		deltaX: 8,
+		deltaX: 4,
 	}
 }
 
@@ -159,6 +162,12 @@ func generate_wait() int {
 	return interval
 }
 
+func DrawCenteredText(screen *ebiten.Image, s string, cx, cy int) { //from https://github.com/sedyh/ebitengine-cheatsheet
+	bounds := text.BoundString(basicfont.Face7x13, s)
+	x, y := cx-bounds.Min.X-bounds.Dx()/2, cy-bounds.Min.Y-bounds.Dy()/2
+	text.Draw(screen, s, basicfont.Face7x13, x, y, colornames.White)
+}
+
 func (demo *scrollDemo) Update() error {
 	//background scroll
 	backgroundWidth := demo.background.Bounds().Dx()
@@ -216,6 +225,9 @@ func (demo *scrollDemo) Draw(screen *ebiten.Image) {
 		drawOps.GeoM.Translate(float64(enemy.xEnemy), float64(enemy.yEnemy))
 		screen.DrawImage(enemy.pict, &drawOps)
 	}
+
+	//draw text
+	DrawCenteredText(screen, "test text", 500, 500)
 }
 
 func (s scrollDemo) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
