@@ -227,7 +227,7 @@ func (demo *scrollDemo) Draw(screen *ebiten.Image) {
 	}
 
 	//draw text
-	DrawCenteredText(screen, "test text", 500, 500)
+	DrawCenteredText(screen, fmt.Sprintf("Score: %d", demo.score), WINDOW_WIDTH/2, 20)
 }
 
 func (s scrollDemo) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
